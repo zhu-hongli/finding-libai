@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import EvaluateRes from './EvaluateRes';
 
 interface EvaluationResult {
   score: number;
@@ -25,7 +26,9 @@ export default function PoemEvaluator() {
         body: JSON.stringify({ poem }),
       });
       
+      
       const data = await response.json();
+      console.log(data);
       setEvaluation(data);
     } catch (error) {
       console.error('评价失败:', error);
@@ -63,18 +66,9 @@ export default function PoemEvaluator() {
       </button>
       
       {evaluation && (
-        <div className="mt-8 p-4 border rounded-lg">
-          <h2 className="text-xl font-semibold mb-2">评价结果</h2>
-          <div className="mb-4">
-            <span className="font-medium">得分：</span>
-            <span className="text-2xl text-blue-600">{evaluation.score}</span>/100
-          </div>
-          <div>
-            <span className="font-medium">评价意见：</span>
-            <p className="mt-2 text-gray-700">{evaluation.feedback}</p>
-          </div>
-        </div>
+        <EvaluateRes jsonInput={JSON.stringify(evaluation)} />
       )}
+
     </div>
   );
 } 
