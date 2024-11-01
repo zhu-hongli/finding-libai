@@ -24,7 +24,7 @@ export default function PoemEvaluator() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ poem }),
-        signal: AbortSignal.timeout(120000),
+        signal: AbortSignal.timeout(1200000),
       });
       
       
