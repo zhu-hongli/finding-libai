@@ -73,6 +73,7 @@ export async function POST(request: Request) {
         ],
         stream: false
       }),
+      signal: AbortSignal.timeout(120000),
     });
 
     if (!response.ok) {
