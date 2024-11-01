@@ -6,8 +6,14 @@ type EvaluationItem = {
   得分: number
 }
 
+type SummaryItem = {
+  得分: number
+  依据: string
+}
+
 type EvaluationData = {
-  [key: string]: EvaluationItem | { 得分: number, 依据: string }
+  综合评分: SummaryItem
+  [key: string]: EvaluationItem | SummaryItem
 }
 
 export default function Component({ jsonInput = '' }: { jsonInput?: string }) {
