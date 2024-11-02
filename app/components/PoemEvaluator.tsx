@@ -10,12 +10,13 @@ interface EvaluationResult {
 
 export default function PoemEvaluator() {
   const [poem, setPoem] = useState('');
-  const [evaluation, setEvaluation] = useState<EvaluationResult | null>(null);
+  const [evaluationText, setEvaluationText] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setEvaluationText('');
     
     try {
       const response = await fetch('/api/evaluate', {
@@ -24,13 +25,23 @@ export default function PoemEvaluator() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ poem }),
-        signal: AbortSignal.timeout(1200000),
       });
-      
-      
-      const data = await response.json();
-      console.log(data);
-      setEvaluation(data);
+
+      if (!response.ok) throw new Error('评估请求失败');
+
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('无法获取响应流');
+
+      const decoder = new TextDecoder();
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        const text = decoder.decode(value);
+        console.log(text);
+        setEvaluationText(prev => prev + text);
+      }
     } catch (error) {
       console.error('评价失败:', error);
     } finally {
@@ -66,8 +77,8 @@ export default function PoemEvaluator() {
         {loading ? "评价中..." : "开始评价"}
       </button>
       
-      {evaluation && (
-        <EvaluateRes jsonInput={JSON.stringify(evaluation)} />
+      {evaluationText && (
+        <EvaluateRes jsonInput={evaluationText} />
       )}
 
     </div>

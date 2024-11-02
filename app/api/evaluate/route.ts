@@ -16,46 +16,44 @@ export async function POST(request: Request) {
       );
     }
 
-    const prompt = `请阅读以下诗歌，并从各个维度进行详细评价，最后给出一个综合评分。请按照以下 JSON 格式提供评价：
+    const prompt = `请阅读以下诗歌，并从各个维度进行详细评价。请根据以下维度逐一描述你的评价，并在每个部分后给出一个得分（1-10）。
 
-{
-  "主题与内容": {
-    "评价": "请详细描述诗歌的主题、思想或情感",
-    "得分": "1-10"
-  },
-  "语言与修辞": {
-    "评价": "请描述修辞手法、语言风格等",
-    "得分": "1-10"
-  },
-  "节奏与音韵": {
-    "评价": "请描述诗歌的韵律、节奏感",
-    "得分": "1-10"
-  },
-  "意象与想象": {
-    "评价": "请描述意象的表现力、联想等",
-    "得分": "1-10"
-  },
-  "结构与布局": {
-    "评价": "请描述结构层次、布局合理性",
-    "得分": "1-10"
-  },
-  "情感与感染力": {
-    "评价": "请描述情感的真挚性、感染力",
-    "得分": "1-10"
-  },
-  "独创性与风格": {
-    "评价": "请描述创新性、风格独特性",
-    "得分": "1-10"
-  },
-  "意境与氛围": {
-    "评价": "请描述诗歌的意境、氛围感",
-    "得分": "1-10"
-  },
-  "综合评分": {
-    "得分": "1-10",
-    "依据": "请总结综合评分的依据"
-  }
-}
+1. 主题与内容
+   - 评价：
+   - 得分：
+
+2. 语言与修辞
+   - 评价：
+   - 得分：
+
+3. 节奏与音韵
+   - 评价：
+   - 得分：
+
+4. 意象与想象
+   - 评价：
+   - 得分：
+
+5. 结构与布局
+   - 评价：
+   - 得分：
+
+6. 情感与感染力
+   - 评价：
+   - 得分：
+
+7. 独创性与风格
+   - 评价：
+   - 得分：
+
+8. 意境与氛围
+   - 评价：
+   - 得分：
+
+9. 综合评分
+   - 得分：
+   - 依据：
+
 
 诗歌内容：${poem}`;
 
@@ -71,9 +69,8 @@ export async function POST(request: Request) {
           { role: 'system', content: 'You are a helpful poetry critic.' },
           { role: 'user', content: prompt }
         ],
-        stream: false
+        stream: true
       }),
-      signal: AbortSignal.timeout(10000000),
     });
 
     if (!response.ok) {
@@ -81,10 +78,53 @@ export async function POST(request: Request) {
       throw new Error(`AI 评估服务异常: ${response.status} - ${errorData.error || response.statusText}`);
     }
 
-    const aiResponse = await response.json();
-    // 从响应中提取出实际的评价内容
-    const evaluationContent = aiResponse.choices[0].message.content;
-    return NextResponse.json({ evaluation: evaluationContent });   
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      async start(controller) {
+        const reader = response.body?.getReader();
+        if (!reader) return;
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+              controller.close();
+              break;
+            }
+
+            const text = new TextDecoder().decode(value);
+            const lines = text.split('\n').filter(line => line.trim() !== '');
+            
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                const data = line.slice(6);
+                if (data === '[DONE]') continue;
+                
+                try {
+                  const parsed = JSON.parse(data);
+                  const content = parsed.choices[0]?.delta?.content || '';
+                  if (content) {
+                    controller.enqueue(encoder.encode(content));
+                  }
+                } catch (e) {
+                  console.error('解析响应数据失败:', e);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          controller.error(error);
+        }
+      }
+    });
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
   } catch (error: any) {
     console.error('评估失败:', error);
     return NextResponse.json(
