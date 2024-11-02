@@ -4,6 +4,8 @@ import { NextResponse } from 'next/server';
 const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
 const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
 
+export const maxDuration =60;
+
 export async function POST(request: Request) {
 
   console.log('hello,in evaluate');
